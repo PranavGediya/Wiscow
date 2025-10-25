@@ -53,58 +53,12 @@ jobs:
         cache-to: type=gha,mode=max
 
     - name: Image digest
-      run: echo "Image pushed successfully with tags ${{ steps.meta.outputs.tags }}"
-
-  deploy:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
-    
-    steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
-
-    - name: Set up kubectl
-      uses: azure/setup-kubectl@v3
-      with:
-        version: 'latest'
-
-    - name: Configure Kubeconfig
       run: |
-        mkdir -p $HOME/.kube
-        echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
-        chmod 600 $HOME/.kube/config
-
-    - name: Verify kubectl connection
-      run: |
-        kubectl cluster-info
-        kubectl get nodes
-
-    - name: Update deployment image
-      run: |
-        kubectl set image deployment/wisecow-deployment \
-          wisecow=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest \
-          --record=true
-
-    - name: Wait for rollout to complete
-      run: |
-        kubectl rollout status deployment/wisecow-deployment --timeout=5m
-
-    - name: Verify deployment
-      run: |
-        echo "=== Deployment Status ==="
-        kubectl get deployment wisecow-deployment
+        echo "✅ Docker image built and pushed successfully!"
+        echo "📦 Image: ${{ steps.meta.outputs.tags }}"
         echo ""
-        echo "=== Pods Status ==="
-        kubectl get pods -l app=wisecow
-        echo ""
-        echo "=== Service Status ==="
-        kubectl get service wisecow-service
+        echo "To deploy to your local cluster, run:"
+        echo "kubectl set image deployment/wisecow-deployment wisecow=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest"
 
-    - name: Rollback on failure
-      if: failure()
-      run: |
-        echo "Deployment failed, initiating rollback..."
-        kubectl rollout undo deployment/wisecow-deployment
-        kubectl rollout status deployment/wisecow-deployment --timeout=3m
-        echo "Rollback completed"
+# Note: Automatic deployment to local Minikube is not possible from GitHub Actions
+# Deploy manually after the image is pushed using the command above
